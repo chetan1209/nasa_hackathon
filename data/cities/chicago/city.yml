@@ -1,0 +1,32 @@
+name: "Chicago"
+bounds:
+  west: -87.9401
+  east: -87.5240
+  north: 42.0230
+  south: 41.6445
+  center_lat: 41.8781
+  center_lon: -87.6298
+
+projections:
+  geographic: "EPSG:4326"
+  web_mercator: "EPSG:3857"
+  state_plane: "EPSG:3435"  # Illinois State Plane East
+
+rasters:
+  ndvi: "ndvi.tif"
+  lst: "lst.tif"
+  no2: "no2.tif"
+
+vectors:
+  tracts: "tracts.geojson"
+  clinics: "clinics.geojson"
+  parks: "parks.geojson"
+
+metadata:
+  source: "NASA Landsat/MODIS/Aura OMI"
+  temporal_coverage: "2020-2023"
+  resolution_meters: 30
+  data_types:
+    ndvi: "vegetation_index"
+    lst: "temperature_celsius"
+    no2: "concentration_ug_m3"

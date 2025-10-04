@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Rush University Medical Center",
+        "facility_type": "hospital",
+        "capacity": 5000,
+        "beds": 676,
+        "emergency_services": true,
+        "specialties": ["general", "cardiology", "orthopedics"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-87.6673, 41.8706]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Northwestern Memorial Hospital",
+        "facility_type": "hospital",
+        "capacity": 4500,
+        "beds": 894,
+        "emergency_services": true,
+        "specialties": ["general", "oncology", "transplant"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-87.6170, 41.8969]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Chicago Health Community Clinic",
+        "facility_type": "clinic",
+        "capacity": 800,
+        "beds": 15,
+        "emergency_services": false,
+        "specialties": ["primary_care", "pediatrics"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-87.6850, 41.8755]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "South Side Family Health Center",
+        "facility_type": "clinic", 
+        "capacity": 650,
+        "beds": 12,
+        "emergency_services": false,
+        "specialties": ["family_medicine", "mental_health"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-87.6942, 41.8623]
+      }
+    }
+  ]
+}

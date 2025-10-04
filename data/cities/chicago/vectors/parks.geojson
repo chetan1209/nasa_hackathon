@@ -1,0 +1,73 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Grant Park",
+        "park_type": "major_park",
+        "area_acres": 319,
+        "facilities": ["fountains", "museums", "walking_trails", "gardens"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-87.6199, 41.8785], [-87.6105, 41.8785], 
+          [-87.6105, 41.8740], [-87.6199, 41.8740],
+          [-87.6199, 41.8785]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Lincoln Park",
+        "park_type": "major_park",
+        "area_acres": 1240,
+        "facilities": ["zoo", "conservatory", "walking_trails", "playing_fields"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-87.6425, 41.9154], [-87.6135, 41.9154],
+          [-87.6135, 41.8932], [-87.6425, 41.8932], 
+          [-87.6425, 41.9154]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Millennium Park",
+        "park_type": "cultural_park",
+        "area_acres": 24.5,
+        "facilities": ["concert_stage", "art_installations", "restaurants", "ice_rink"]
+      },
+      "geometry": {
+        "type": "Polygon", 
+        "coordinates": [[
+          [-87.6234, 41.8826], [-87.6205, 41.8826],
+          [-87.6205, 41.8805], [-87.6234, 41.8805],
+          [-87.6234, 41.8826]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Washington Park",
+        "park_type": "community_park",
+        "area_acres": 372,
+        "facilities": ["playground", "walking_paths", "baseball_fields", "gym"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-87.6013, 41.8018], [-87.5813, 41.8018],
+          [-87.5813, 41.7933], [-87.6013, 41.7933],
+          [-87.6013, 41.8018]
+        ]]
+      }
+    }
+  ]
+}
