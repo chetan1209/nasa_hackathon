@@ -1,0 +1,12 @@
+{
+  "meta": {"city":"Chicago","units":{"temp":"C"}},
+  "features": [
+    {
+      "id": "17031010100",
+      "centroid": [-87.65, 41.88],
+      "metrics": {"ndvi": 0.23, "lst": 33.1, "no2": 18.2},
+      "indices": {"heat": 61.3, "air": 58.7, "green": 44.2, "healthcare": 52.1},
+      "scores": {"hcs": 71.8, "equity_adjusted": 66.5}
+    }
+  ]
+}
