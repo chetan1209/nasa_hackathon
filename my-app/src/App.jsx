@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import * as Cesium from 'cesium';
+import SimpleAIExplain from './components/SimpleAIExplain';
 
 // --- IMPORTANT ---
 // 1. SET YOUR CESIUM ION ACCESS TOKEN HERE
@@ -91,6 +92,7 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
   const [history, setHistory] = useState([]);
   const [aiScore, setAiScore] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
+  const [showAIExplain, setShowAIExplain] = useState(false);
   
   const viewerRef = useRef(null);
   const customDataSourceRef = useRef(null); 
@@ -276,8 +278,9 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
       <div ref={cesiumContainerRef} onDragOver={handleDragOver} onDrop={handleDrop} onDragLeave={handleDragLeave} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
       {isLoading && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(15, 23, 42, 0.95)', padding: '32px 48px', borderRadius: '16px', border: '1px solid #3b82f6', textAlign: 'center', zIndex: 2000 }}> <div style={{ width: '50px', height: '50px', border: '4px solid rgba(59, 130, 246, 0.3)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} /> <h1 style={{ color: '#fff', fontSize: '18px', margin: 0 }}>Loading Chicago...</h1> </div>}
       
-      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 100 }}>
+      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', gap: '8px' }}>
         <button onClick={onStartGuide} style={{ padding: '8px 16px', background: 'rgba(15, 23, 42, 0.95)', border: '1px solid #3b82f6', borderRadius: '6px', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Guide</button>
+        <button onClick={() => setShowAIExplain(true)} style={{ padding: '8px 16px', background: 'rgba(34, 197, 94, 0.2)', border: '1px solid #22c55e', borderRadius: '6px', color: '#22c55e', fontSize: '14px', cursor: 'pointer' }}>🤖 AI Explain</button>
       </div>
 
       <div style={{ position: 'absolute', left: '20px', top: '20px', width: '280px', maxHeight: 'calc(100vh - 40px)', background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '20px', border: '1px solid #3b82f6', overflowY: 'auto', zIndex: 100 }}> <h3 style={{ margin: '0 0 16px 0', color: '#60a5fa', fontSize: '18px', fontWeight: 700 }}>Design Palette</h3> {PALETTE_ITEMS.map(item => <PaletteItem key={item.id} item={item} onDragStart={setDraggedItem} />)} <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(71, 85, 105, 0.3)' }}> <button onClick={handleUndo} disabled={history.length === 0} style={{ width: '100%', padding: '12px', background: history.length > 0 ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'rgba(51, 65, 85, 0.3)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 600, cursor: history.length > 0 ? 'pointer' : 'not-allowed', marginBottom: '8px' }}>Undo ({history.length})</button> <button onClick={handleExport} style={{ width: '100%', padding: '12px', background: 'rgba(34, 197, 94, 0.2)', border: '1px solid #22c55e', borderRadius: '8px', color: '#22c55e', fontWeight: 600, cursor: 'pointer' }}>Export Design</button> </div> </div>
@@ -292,6 +295,14 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
             </div>
         </div>
       )}
+      
+      <SimpleAIExplain 
+        cityState={cityState}
+        aiScore={aiScore}
+        impactAnalysis={impactAnalysis}
+        visible={showAIExplain}
+        onClose={() => setShowAIExplain(false)}
+      />
     </div>
   );
 };
