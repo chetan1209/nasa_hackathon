@@ -97,7 +97,7 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
   const viewerRef = useRef(null);
   const customDataSourceRef = useRef(null); 
   const [impactAnalysis, setImpactAnalysis] = useState(null); 
-  const classificationPrimitivesRef = useRef({});
+  const groundPlanesRef = useRef({});
 
   const highlightBlockRef = useRef(null); 
 
@@ -213,21 +213,49 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
     const radius = 60; const offset = 0.0005;
     const west = centerLon - offset; const south = centerLat - offset; const east = centerLon + offset; const north = centerLat + offset;
     
-    const classificationPrimitive = new Cesium.ClassificationPrimitive({
-        geometryInstances: new Cesium.GeometryInstance({
-          geometry: new Cesium.PolygonGeometry({
-            polygonHierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray([west, south, east, south, east, north, west, north])),
-            height: -10, extrudedHeight: 1000.0,
-          }),
-          attributes: { color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.WHITE) },
-        }),
-        classificationType: Cesium.ClassificationType.CESIUM_3D_TILE,
-    });
-    viewer.scene.primitives.add(classificationPrimitive);
-    classificationPrimitivesRef.current[dropId] = classificationPrimitive;
+    // Step 1: Gray "cleared land" layer (covers buildings)
+  const clearedLayer = viewer.entities.add({
+    id: `cleared-${dropId}`,
+    polygon: {
+      hierarchy: Cesium.Cartesian3.fromDegreesArray([
+        west, south, 
+        east, south, 
+        east, north, 
+        west, north
+      ]),
+      material: Cesium.Color.DARKGRAY.withAlpha(0.85),
+      height: cartographic.height - 1,
+      extrudedHeight: cartographic.height + 35, // Tall enough to cover buildings
+      outline: true,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2
+    }
+  });
+  
+  // Step 2: Green park layer on top
+  const groundPlane = viewer.entities.add({
+    id: `ground-${dropId}`,
+    polygon: {
+      hierarchy: Cesium.Cartesian3.fromDegreesArray([
+        west, south, 
+        east, south, 
+        east, north, 
+        west, north
+      ]),
+      material: Cesium.Color.fromCssColorString('#22c55e').withAlpha(0.8),
+      height: cartographic.height + 35,
+      extrudedHeight: cartographic.height + 37, // Thin green layer on top
+      outline: true,
+      outlineColor: Cesium.Color.fromCssColorString('#16a34a'),
+      outlineWidth: 2
+    }
+  });
+  
+  // Store both for undo
+  groundPlanesRef.current[dropId] = { cleared: clearedLayer, ground: groundPlane };
 
     const startTime = viewer.clock.currentTime;
-    viewer.entities.add({ id: dropId, position: Cesium.Cartesian3.fromDegrees(centerLon, centerLat, cartographic.height), ellipse: { semiMinorAxis: new Cesium.CallbackProperty((time) => { const e = Cesium.JulianDate.secondsDifference(time, startTime); return radius * ((e % 2.0) / 2.0); }, false), semiMajorAxis: new Cesium.CallbackProperty((time) => { const e = Cesium.JulianDate.secondsDifference(time, startTime); return radius * ((e % 2.0) / 2.0); }, false), material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty((time) => { const e = Cesium.JulianDate.secondsDifference(time, startTime); return Cesium.Color.AQUAMARINE.withAlpha(1.0 - (e % 2.0) / 2.0); }, false)), height: cartographic.height + 0.1 } });
+    viewer.entities.add({ id: dropId, position: Cesium.Cartesian3.fromDegrees(centerLon, centerLat, cartographic.height), ellipse: { semiMinorAxis: new Cesium.CallbackProperty((time) => { const e = Cesium.JulianDate.secondsDifference(time, startTime); return radius * ((e % 2.0) / 2.0); }, false), semiMajorAxis: new Cesium.CallbackProperty((time) => { const e = Cesium.JulianDate.secondsDifference(time, startTime); return radius * ((e % 2.0) / 2.0); }, false), material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty((time) => { const e = Cesium.JulianDate.secondsDifference(time, startTime); return Cesium.Color.GREEN.withAlpha(1.0 - (e % 2.0) / 2.0); }, false)), height: cartographic.height + 0.1 } });
 
     const treeUrl = '/tree.glb'; const terrainProvider = viewer.terrainProvider;
     const positionsToSample = [];
@@ -253,24 +281,26 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
     const lastAction = history[history.length - 1];
     
     if (viewer && !viewer.isDestroyed()) {
-        viewer.entities.removeById(lastAction.dropId);
-        const primitiveToRemove = classificationPrimitivesRef.current[lastAction.dropId];
-        if (primitiveToRemove) {
-            viewer.scene.primitives.remove(primitiveToRemove);
-            delete classificationPrimitivesRef.current[lastAction.dropId];
-        }
+      viewer.entities.removeById(lastAction.dropId);
+      const layers = groundPlanesRef.current[lastAction.dropId];
+      if (layers) {
+        viewer.entities.remove(layers.cleared);
+        viewer.entities.remove(layers.ground);
+        delete groundPlanesRef.current[lastAction.dropId];
+      }
     }
     
     if (customDataSourceRef.current) {
-        const entitiesToRemove = customDataSourceRef.current.entities.values.filter(
-            (entity) => entity.properties && entity.properties.dropId && entity.properties.dropId.getValue() === lastAction.dropId
-        );
-        entitiesToRemove.forEach(entity => customDataSourceRef.current.entities.remove(entity));
+      const entitiesToRemove = customDataSourceRef.current.entities.values.filter(
+        (entity) => entity.properties && entity.properties.dropId && entity.properties.dropId.getValue() === lastAction.dropId
+      );
+      entitiesToRemove.forEach(entity => customDataSourceRef.current.entities.remove(entity));
     }
     
     setCityState(lastAction.cityState);
     setHistory(prev => prev.slice(0, -1));
   };
+
   const handleExport = () => { const d = { timestamp: new Date().toISOString(), cityState, aiScore }; const s = JSON.stringify(d, null, 2); const b = new Blob([s], { type: 'application/json' }); const u = URL.createObjectURL(b); const l = document.createElement('a'); l.href = u; l.download = 'chicago-design.json'; document.body.appendChild(l); l.click(); document.body.removeChild(l); URL.revokeObjectURL(u); };
 
   return (

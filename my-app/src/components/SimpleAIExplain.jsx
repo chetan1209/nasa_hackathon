@@ -98,30 +98,9 @@ const SimpleAIExplain = ({ cityState, aiScore, impactAnalysis, onClose, visible 
         content: msg.content
       }));
       
-      const systemPrompt = `You are a data-driven urban planning analyst for Chicago. Be analytical and specific. Focus on:
+      const systemPrompt = `Urban planning AI for Chicago. Use NASA data (MODIS LST, Landsat NDVI, TEMPO NO₂). Keep responses under 100 words. Format: [Score change] → [Why using science] → [Impact on residents]. Example: "Score rose 70→76 (+6). Trees reduce LST 2-8°C via evapotranspiration (NASA MODIS). Benefits ~2,400 residents." Only use provided numbers.`;
 
-- EXACT NUMBERS: Always mention specific percentages, scores, and metrics from the data
-- LOCATION DETAILS: Reference specific areas where items were placed and their impacts
-- CAUSE & EFFECT: Explain WHY certain numbers changed and HOW it affects residents
-- ACTIONABLE INSIGHTS: What worked well, what didn't, what to do next
-
-Be direct and factual. Use numbers from the data provided. No generic Chicago facts or emojis.`;
-      const currentDataPrompt = userMessage || `Analyze this Chicago urban design data with specific numbers:
-
-CURRENT DESIGN DATA:
-- Items placed: ${currentState.totalItems} total
-- Item types: ${JSON.stringify(currentState.itemTypes)}
-- Overall Health Score: ${currentState.aiScore ? currentState.aiScore.overall_score : 'Not available'}
-- Score categories: ${currentState.aiScore ? JSON.stringify(currentState.aiScore.categories) : 'Not available'}
-- Recent Impact Analysis: ${currentState.impactAnalysis ? `Air Quality: ${currentState.impactAnalysis.airQuality}, Property Value: ${currentState.impactAnalysis.propertyValue}, Summary: ${currentState.impactAnalysis.summary}` : 'No recent analysis'}
-
-REQUIRED ANALYSIS:
-1. What specific numbers improved or declined?
-2. Which areas of Chicago were affected and how?
-3. What caused these specific changes?
-4. What should be done next based on these exact results?
-
-Focus on the actual data and numbers provided. Be specific and analytical.`;
+const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalItems} items (${JSON.stringify(currentState.itemTypes)}). Score: ${currentState.aiScore?.overall_score || 'N/A'}. ${currentState.impactAnalysis ? `Impact: Air ${currentState.impactAnalysis.airQuality}` : 'Baseline'}. ${currentState.totalItems === 0 ? 'Explain baseline.' : 'Explain using NASA data.'}`;
 
       const response = await fetch(GPT_API_URL, {
         method: 'POST',
@@ -136,8 +115,8 @@ Focus on the actual data and numbers provided. Be specific and analytical.`;
             ...conversationHistory,
             { role: 'user', content: currentDataPrompt }
           ],
-          max_tokens: 150,
-          temperature: 0.8
+          max_tokens: 200,
+          temperature: 0.4,
         })
       });
 
