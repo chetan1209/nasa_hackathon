@@ -19,12 +19,20 @@ A comprehensive environmental polygon scoring system that analyzes temperature, 
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Run the polygon scoring system
-python polygon_scoring_system.py
+# Install frontend dependencies and build the production bundle
+cd my-app
+npm install
+npm run build
+cd ..
+
+# Start the Flask backend (serves APIs and the built frontend)
+python backend_server.py
 ```
+
+The Flask server now hosts the compiled React app from `my-app/dist`, so once it is running you can navigate to `http://localhost:5001` to interact with the frontend and API together.
 
 ## 📁 Project Structure
 
