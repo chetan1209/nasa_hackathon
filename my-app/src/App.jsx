@@ -846,7 +846,7 @@ const LandingPage = ({ onStart }) => {
                 renderer.setSize(mount.clientWidth, mount.clientHeight); 
             }; 
             window.addEventListener('resize', handleResize); 
-            
+            // hi 
             let animationFrameId;
             let time = 0;
             
