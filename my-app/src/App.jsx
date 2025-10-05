@@ -752,9 +752,167 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
         </>
     );
 };
+const LandingPage = ({ onStart }) => { 
+    const mountRef = useRef(null); 
+    
+    useEffect(() => { 
+        if (!mountRef.current) return; 
+        const mount = mountRef.current; 
+        let renderer; 
+        
+        try { 
+            const scene = new THREE.Scene(); 
+            const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000); 
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); 
+            renderer.setSize(mount.clientWidth, mount.clientHeight); 
+            renderer.setPixelRatio(window.devicePixelRatio); 
+            mount.appendChild(renderer.domElement); 
+            
+            // Main torus
+            const torusGeom = new THREE.TorusGeometry(1.8, 0.5, 32, 100); 
+            const torusMat = new THREE.MeshStandardMaterial({ color: THEME.primary, wireframe: true }); 
+            const torus = new THREE.Mesh(torusGeom, torusMat); 
+            scene.add(torus); 
+            
+            // Add floating cubes
+            const cubes = [];
+            for (let i = 0; i < 12; i++) {
+                const size = Math.random() * 0.3 + 0.2;
+                const cubeGeom = new THREE.BoxGeometry(size, size, size);
+                const cubeMat = new THREE.MeshStandardMaterial({ 
+                    color: THEME.primary, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const cube = new THREE.Mesh(cubeGeom, cubeMat);
+                cube.position.set(
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10
+                );
+                cube.userData.speed = Math.random() * 0.01 + 0.005;
+                cube.userData.rotSpeed = Math.random() * 0.02 + 0.01;
+                cubes.push(cube);
+                scene.add(cube);
+            }
+            
 
-const LandingPage = ({ onStart }) => { const mountRef = useRef(null); useEffect(() => { if (!mountRef.current) return; const mount = mountRef.current; let renderer; try { const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000); renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(mount.clientWidth, mount.clientHeight); renderer.setPixelRatio(window.devicePixelRatio); mount.appendChild(renderer.domElement); const geometry = new THREE.TorusGeometry(1.8, 0.5, 32, 100); const material = new THREE.MeshStandardMaterial({ color: THEME.primary, wireframe: true }); const torus = new THREE.Mesh(geometry, material); scene.add(torus); const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); scene.add(ambientLight); const pointLight = new THREE.PointLight(0xffffff, 1); pointLight.position.set(5, 5, 5); scene.add(pointLight); camera.position.z = 5; const handleResize = () => { camera.aspect = mount.clientWidth / mount.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(mount.clientWidth, mount.clientHeight); }; window.addEventListener('resize', handleResize); let animationFrameId; const animate = () => { animationFrameId = requestAnimationFrame(animate); torus.rotation.x += 0.002; torus.rotation.y += 0.003; torus.rotation.z -= 0.001; renderer.render(scene, camera); }; animate(); return () => { window.removeEventListener('resize', handleResize); cancelAnimationFrame(animationFrameId); if (renderer) renderer.dispose(); if (mount && renderer.domElement) mount.removeChild(renderer.domElement); }; } catch (error) { console.error("Failed to create WebGL context for landing page:", error); if (renderer && mount && renderer.domElement) mount.removeChild(renderer.domElement); } }, []); return ( <div className="landing-container"> <div ref={mountRef} className="landing-background" /> <div className="landing-content"> <h1 className="landing-title">Urban Canvas <sup>AI</sup></h1> <p className="landing-subtitle">Reimagine Chicago's future. Utilize generative AI to design a sustainable and vibrant urban landscape. Your vision, powered by data.</p> <button onClick={onStart} className="landing-button"> Start Designing <span>&rarr;</span> </button> </div> </div> ); };
-
+            // Particle system
+            const particleCount = 200;
+            const particleGeom = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const velocities = [];
+            
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 30;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+                velocities.push({
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: (Math.random() - 0.5) * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                });
+            }
+            
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMat = new THREE.PointsMaterial({ 
+                color: THEME.primary, 
+                size: 0.08,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); 
+            scene.add(ambientLight); 
+            
+            const pointLight1 = new THREE.PointLight(THEME.primary, 2); 
+            pointLight1.position.set(5, 5, 5); 
+            scene.add(pointLight1); 
+            
+            const pointLight2 = new THREE.PointLight(0x4ade80, 1.5); 
+            pointLight2.position.set(-5, -3, 3); 
+            scene.add(pointLight2); 
+            
+            camera.position.z = 5; 
+            
+            const handleResize = () => { 
+                camera.aspect = mount.clientWidth / mount.clientHeight; 
+                camera.updateProjectionMatrix(); 
+                renderer.setSize(mount.clientWidth, mount.clientHeight); 
+            }; 
+            window.addEventListener('resize', handleResize); 
+            
+            let animationFrameId;
+            let time = 0;
+            
+            const animate = () => { 
+                animationFrameId = requestAnimationFrame(animate); 
+                time += 0.01;
+                
+                // Animate main torus
+                torus.rotation.x += 0.002; 
+                torus.rotation.y += 0.003; 
+                torus.rotation.z -= 0.001; 
+                
+                // Animate cubes
+                cubes.forEach(cube => {
+                    cube.rotation.x += cube.userData.rotSpeed;
+                    cube.rotation.y += cube.userData.rotSpeed;
+                    cube.position.y += Math.sin(time + cube.position.x) * 0.005;
+                });
+                
+                // Animate particles
+                const pos = particles.geometry.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    pos[i * 3] += velocities[i].x;
+                    pos[i * 3 + 1] += velocities[i].y;
+                    pos[i * 3 + 2] += velocities[i].z;
+                    
+                    // Boundary check and reverse
+                    if (Math.abs(pos[i * 3]) > 15) velocities[i].x *= -1;
+                    if (Math.abs(pos[i * 3 + 1]) > 10) velocities[i].y *= -1;
+                    if (Math.abs(pos[i * 3 + 2]) > 10) velocities[i].z *= -1;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Animate lights
+                pointLight1.position.x = Math.sin(time * 0.5) * 7;
+                pointLight1.position.z = Math.cos(time * 0.5) * 7;
+                
+                renderer.render(scene, camera); 
+            }; 
+            animate(); 
+            
+            return () => { 
+                window.removeEventListener('resize', handleResize); 
+                cancelAnimationFrame(animationFrameId); 
+                if (renderer) renderer.dispose(); 
+                if (mount && renderer.domElement) mount.removeChild(renderer.domElement); 
+            }; 
+        } catch (error) { 
+            console.error("Failed to create WebGL context for landing page:", error); 
+            if (renderer && mount && renderer.domElement) mount.removeChild(renderer.domElement); 
+        } 
+    }, []); 
+    
+    return ( 
+        <div className="landing-container"> 
+            <div ref={mountRef} className="landing-background" /> 
+            <div className="landing-content"> 
+                <h1 className="landing-title">UrbanX Canvas <sup>AI</sup></h1> 
+                <p className="landing-subtitle">Reimagine Chicago's future. Utilize generative AI to design a sustainable and vibrant urban landscape. Your vision, powered by data.</p> 
+                <button onClick={onStart} className="landing-button"> 
+                    Start Designing <span>&rarr;</span> 
+                </button> 
+            </div> 
+        </div> 
+    ); 
+};
 // --- App Component (Parent) ---
 const App = () => {
     const [view, setView] = useState('landing');
