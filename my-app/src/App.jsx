@@ -38,6 +38,40 @@ const mockAIScoring = (state) => new Promise(resolve => setTimeout(() => {
     });
 }, 500));
 
+// --- Backend Data Transformation ---
+const transformBackendData = (backendData) => {
+    console.log('🔄 Transforming backend data:', backendData);
+    
+    const { feature_scores, overall_scores, color_codes } = backendData;
+    const transformed = {};
+    
+    // Convert backend z-scores to frontend health scores (0-100 scale)
+    Object.keys(overall_scores).forEach(regionId => {
+        const zScore = overall_scores[regionId];
+        const aqiZScore = feature_scores.aqi[regionId] || 0;
+        const tempZScore = feature_scores.temperature[regionId] || 0;
+        const humidityZScore = feature_scores.water_vapour[regionId] || 0;
+        
+        // Convert z-scores to 0-100 scale (z-score of 0 = 50, ±2 = 0/100)
+        const healthScore = Math.max(0, Math.min(100, 50 + (zScore * 25)));
+        const aqiScore = Math.max(0, Math.min(100, 50 + (aqiZScore * 25)));
+        const tempScore = Math.max(0, Math.min(100, 50 + (tempZScore * 25)));
+        const humidityScore = Math.max(0, Math.min(100, 50 + (humidityZScore * 25)));
+        
+        transformed[regionId] = {
+            health_score: Math.round(healthScore),
+            name: `Region ${regionId}`,
+            aqi_score: Math.round(aqiScore),
+            temperature_score: Math.round(tempScore),
+            humidity_score: Math.round(humidityScore),
+            color_code: color_codes[regionId] || 'yellow'
+        };
+    });
+    
+    console.log('✅ Transformed data:', transformed);
+    return transformed;
+};
+
 
 // --- UI Components ---
 
@@ -267,14 +301,24 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
 
             (async () => {
                 try {
-                    const [regionGeometry, healthData, tileset] = await Promise.all([
-                        fetch('/chicago-regions.json').then(res => res.json()),
-                        fetch('/health-scores.json').then(res => res.json()),
+                    // Try API endpoints first, fallback to static files
+                    const [regionGeometry, backendData, tileset] = await Promise.all([
+                        fetch('http://localhost:5001/api/regions').then(res => {
+                            if (!res.ok) throw new Error('API not available');
+                            return res.json();
+                        }).catch(() => fetch('/chicago-regions.json').then(res => res.json())),
+                        fetch('http://localhost:5001/api/polygon-scores').then(res => {
+                            if (!res.ok) throw new Error('API not available');
+                            return res.json();
+                        }).catch(() => fetch('/polygon_scoring_results.json').then(res => res.json())),
                         Cesium.createOsmBuildingsAsync()
                     ]);
 
                     setRegionGeoJson(regionGeometry);
-                    setRegionalScores(healthData);
+                    
+                    // Transform backend data to match frontend expectations
+                    const transformedScores = transformBackendData(backendData);
+                    setRegionalScores(transformedScores);
 
                     if (viewer && !viewer.isDestroyed()) {
                         viewer.scene.primitives.add(tileset);
@@ -613,21 +657,22 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
 
     const handleExport = () => { const data = { ts: new Date().toISOString(), cityState, aiScore, regionalScores }; const str = JSON.stringify(data, null, 2); const blob = new Blob([str], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'chicago-design.json'; a.click(); URL.revokeObjectURL(url); };
 
-    // --- EDITED: Memoized for performance ---
+    // --- EDITED: Memoized for performance with real backend data ---
     const currentAiScoreDisplay = React.useMemo(() => {
         if (selectedRegionId && regionalScores && regionalScores[selectedRegionId]) {
-            const score = regionalScores[selectedRegionId].health_score;
+            const regionData = regionalScores[selectedRegionId];
             return {
-                overall_score: score.toFixed(0),
+                overall_score: regionData.health_score.toFixed(0),
                 categories: {
-                    AQI: Math.min(100, score + Math.floor(Math.random()*10)).toFixed(0),
-                    Temperature: Math.min(100, score + Math.floor(Math.random()*5)).toFixed(0),
-                    Humidity: Math.min(100, score - Math.floor(Math.random()*5)).toFixed(0),
+                    AQI: regionData.aqi_score.toFixed(0),
+                    Temperature: regionData.temperature_score.toFixed(0),
+                    Humidity: regionData.humidity_score.toFixed(0),
                 },
-                summary: score >= 70 ? 'This region boasts excellent health and sustainability!' :
-                         score >= 40 ? 'Moderate health. Consider improvements for a greener future.' :
-                         'This region requires significant improvements in urban health.',
-                regionName: regionalScores[selectedRegionId].name
+                summary: regionData.health_score >= 70 ? 'This region boasts excellent environmental health!' :
+                         regionData.health_score >= 40 ? 'Moderate environmental health. Consider improvements for a greener future.' :
+                         'This region requires significant environmental improvements.',
+                regionName: regionData.name,
+                colorCode: regionData.color_code
             };
         }
         return aiScore;
