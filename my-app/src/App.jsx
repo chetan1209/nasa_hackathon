@@ -303,11 +303,11 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
                 try {
                     // Try API endpoints first, fallback to static files
                     const [regionGeometry, backendData, tileset] = await Promise.all([
-                        fetch('/api/regions').then(res => {
+                        fetch('http://localhost:5001/api/regions').then(res => {
                             if (!res.ok) throw new Error('API not available');
                             return res.json();
                         }).catch(() => fetch('/chicago-regions.json').then(res => res.json())),
-                        fetch('/api/polygon-scores').then(res => {
+                        fetch('http://localhost:5001/api/polygon-scores').then(res => {
                             if (!res.ok) throw new Error('API not available');
                             return res.json();
                         }).catch(() => fetch('/polygon_scoring_results.json').then(res => res.json())),
