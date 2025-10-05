@@ -21,8 +21,8 @@ const THEME = {
 // --- DESIGN PALETTE with impactFactor ---
 const PALETTE_ITEMS = [
     { id: 'trees', name: 'Add Park', icon: '🌳', type: 'vegetation', placement: 'ground', modelUri: '/tree.glb', scale: 2.5, impactFactor: 2.0 },
-    { id: 'cool_roof', name: 'Add Reflective Surfaces', icon: '⬜', type: 'building', placement: 'rooftop', modelUri: '/cool_roof.glb', scale: 8, impactFactor: 1.0 },
-    { id: 'water_body', name: 'Add Water Body', icon: '💧', type: 'water', placement: 'ground', modelUri: '/fountain.glb', scale: 15, impactFactor: 2.2 }
+    { id: 'cool_roof', name: 'Add Reflective Surfaces', icon: '⬜', type: 'building', placement: 'rooftop', modelUri: '/mirror.glb', scale: .1, impactFactor: 1.0 },
+    { id: 'water_body', name: 'Add Water Body', icon: '💧', type: 'water', placement: 'ground', modelUri: '/water.glb', scale: .1, impactFactor: 2.2 }
 ];
 
 // --- Mocks & Helpers ---
@@ -523,7 +523,7 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
                 onClose={() => setShowAIExplain(false)}
             />
         </>
-    );
+);
 };
 
 const LandingPage = ({ onStart }) => { const mountRef = useRef(null); useEffect(() => { if (!mountRef.current) return; const mount = mountRef.current; let renderer; try { const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000); renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(mount.clientWidth, mount.clientHeight); renderer.setPixelRatio(window.devicePixelRatio); mount.appendChild(renderer.domElement); const geometry = new THREE.TorusGeometry(1.8, 0.5, 32, 100); const material = new THREE.MeshStandardMaterial({ color: THEME.primary, wireframe: true }); const torus = new THREE.Mesh(geometry, material); scene.add(torus); const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); scene.add(ambientLight); const pointLight = new THREE.PointLight(0xffffff, 1); pointLight.position.set(5, 5, 5); scene.add(pointLight); camera.position.z = 5; const handleResize = () => { camera.aspect = mount.clientWidth / mount.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(mount.clientWidth, mount.clientHeight); }; window.addEventListener('resize', handleResize); let animationFrameId; const animate = () => { animationFrameId = requestAnimationFrame(animate); torus.rotation.x += 0.002; torus.rotation.y += 0.003; torus.rotation.z -= 0.001; renderer.render(scene, camera); }; animate(); return () => { window.removeEventListener('resize', handleResize); cancelAnimationFrame(animationFrameId); if (renderer) renderer.dispose(); if (mount && renderer.domElement) mount.removeChild(renderer.domElement); }; } catch (error) { console.error("Failed to create WebGL context for landing page:", error); if (renderer && mount && renderer.domElement) mount.removeChild(renderer.domElement); } }, []); return ( <div className="landing-container"> <div ref={mountRef} className="landing-background" /> <div className="landing-content"> <h1 className="landing-title">Urban Canvas <sup>AI</sup></h1> <p className="landing-subtitle">Reimagine Chicago's future. Utilize generative AI to design a sustainable and vibrant urban landscape. Your vision, powered by data.</p> <button onClick={onStart} className="landing-button"> Start Designing <span>&rarr;</span> </button> </div> </div> ); };
