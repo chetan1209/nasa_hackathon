@@ -54,29 +54,33 @@ const ChatInput = ({ onSend, loading }) => {
   );
 };
 
-const SimpleAIExplain = ({ cityState, aiScore, impactAnalysis, onClose, visible }) => {
+const SimpleAIExplain = ({ cityState, impactAnalysis, onClose, visible }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Replace with your actual GPT-4o API key
   const GPT_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
   const GPT_API_URL = 'https://api.openai.com/v1/chat/completions';
 
   const analyzeCurrentState = () => {
+    const items = Object.values(cityState);
+    
     const state = {
-      totalItems: Object.keys(cityState).length,
+      totalItems: items.length,
       itemTypes: {},
-      aiScore: aiScore,
+      itemsList: items.map((item, idx) => ({ 
+        id: idx + 1, 
+        type: item.type, 
+        name: item.name 
+      })),
       impactAnalysis: impactAnalysis,
       timestamp: new Date().toISOString()
     };
-
-    // Count item types
-    Object.values(cityState).forEach(item => {
+  
+    items.forEach(item => {
       state.itemTypes[item.type] = (state.itemTypes[item.type] || 0) + 1;
     });
-
+  
     return state;
   };
 
@@ -87,21 +91,60 @@ const SimpleAIExplain = ({ cityState, aiScore, impactAnalysis, onClose, visible 
     try {
       const currentState = analyzeCurrentState();
       
-      // Add user message to chat
       if (userMessage) {
         setMessages(prev => [...prev, { type: 'user', content: userMessage, timestamp: new Date() }]);
       }
       
-      // Create conversation context
       const conversationHistory = messages.map(msg => ({
         role: msg.type === 'user' ? 'user' : 'assistant',
         content: msg.content
       }));
       
-      const systemPrompt = `Urban planning AI for Chicago. Use NASA data (MODIS LST, Landsat NDVI, TEMPO NO₂). Keep responses under 100 words. Format: [Score change] → [Why using science] → [Impact on residents]. Example: "Score rose 70→76 (+6). Trees reduce LST 2-8°C via evapotranspiration (NASA MODIS). Benefits ~2,400 residents." Only use provided numbers.`;
+      const systemPrompt = `You are an urban planning AI assistant analyzing Chicago environmental interventions.
 
-const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalItems} items (${JSON.stringify(currentState.itemTypes)}). Score: ${currentState.aiScore?.overall_score || 'N/A'}. ${currentState.impactAnalysis ? `Impact: Air ${currentState.impactAnalysis.airQuality}` : 'Baseline'}. ${currentState.totalItems === 0 ? 'Explain baseline.' : 'Explain using NASA data.'}`;
+CRITICAL RULES:
+- Use ONLY the exact numbers provided - never estimate or guess
+- If you see "Score change: +3.4 points", you MUST say "+3.4 points" not "7.2" or any other number
+- Use exact region names provided (e.g., "Region r4")
+- Mention NASA data types (LST for temperature, NDVI for vegetation, NO₂ for air quality) conceptually only
+- Keep responses under 100 words
 
+FORMAT:
+[Exact score change] → [Scientific explanation] → [Resident benefit]`;
+  
+      let contextPrompt = '';
+      
+      if (userMessage) {
+        contextPrompt = `User question: "${userMessage}"\n\n`;
+      }
+      
+      contextPrompt += `CURRENT STATE:\n`;
+      contextPrompt += `- Total interventions placed: ${currentState.totalItems}\n`;
+
+      if (currentState.totalItems > 0) {
+        contextPrompt += `- Summary: ${JSON.stringify(currentState.itemTypes)}\n`;
+        contextPrompt += `- All interventions: ${currentState.itemsList.map(i => `#${i.id} ${i.name}`).join(', ')}\n`;
+      }
+      
+      if (currentState.impactAnalysis) {
+        contextPrompt += `\nMOST RECENT IMPACT:\n`;
+        contextPrompt += `- Intervention: ${currentState.impactAnalysis.interventionType}\n`;
+        contextPrompt += `- Region: ${currentState.impactAnalysis.title}\n`;
+        contextPrompt += `- Old score: ${currentState.impactAnalysis.oldScore}\n`;
+        contextPrompt += `- New score: ${currentState.impactAnalysis.newScore}\n`;
+        contextPrompt += `- Score change: +${currentState.impactAnalysis.scoreChange} points (EXACT NUMBER - use this)\n`;
+      }
+      
+      if (currentState.totalItems === 0) {
+        contextPrompt += `\nUSER JUST OPENED APP:
+- Map shows Chicago regions colored by environmental health (green=good 70-100, yellow=moderate 40-69, red=poor <40)
+- Health scores from NASA satellite data (LST, NDVI, NO₂)
+- Metrics: Health Score, AQI, Temperature, Humidity
+- Invite user to click regions or add interventions (parks, reflective surfaces, water bodies)`;
+      } else {
+        contextPrompt += `\nEXPLAIN: How these interventions scientifically improve environment. Use ONLY the exact numbers above.`;
+      }
+  
       const response = await fetch(GPT_API_URL, {
         method: 'POST',
         headers: {
@@ -113,23 +156,22 @@ const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalIt
           messages: [
             { role: 'system', content: systemPrompt },
             ...conversationHistory,
-            { role: 'user', content: currentDataPrompt }
+            { role: 'user', content: contextPrompt }
           ],
           max_tokens: 200,
-          temperature: 0.4,
+          temperature: 0.3,
         })
       });
-
+  
       if (!response.ok) {
         throw new Error(`OpenAI API error: ${response.status}`);
       }
-
+  
       const data = await response.json();
       const aiResponse = data.choices[0].message.content;
       
-      // Add AI response to chat
       setMessages(prev => [...prev, { type: 'ai', content: aiResponse, timestamp: new Date() }]);
-
+  
     } catch (err) {
       console.error('Error getting AI explanation:', err);
       setError('Failed to get AI response. Please try again.');
@@ -168,7 +210,6 @@ const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalIt
       flexDirection: 'column',
       color: 'white'
     }}>
-      {/* Header */}
       <div style={{
         padding: '16px 20px',
         borderBottom: '1px solid rgba(71, 85, 105, 0.3)',
@@ -178,7 +219,7 @@ const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalIt
       }}>
         <div>
           <h3 style={{ margin: '0 0 4px 0', color: '#60a5fa', fontSize: '16px', fontWeight: '700' }}>
-            🤖 Urban AI Assistant
+            Urban AI Assistant
           </h3>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: '12px' }}>
             Powered by GPT-4o & NASA data
@@ -205,7 +246,6 @@ const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalIt
         </button>
       </div>
 
-      {/* Chat Messages */}
       <div style={{
         flex: 1,
         padding: '16px',
@@ -291,7 +331,6 @@ const currentDataPrompt = userMessage || `Chicago design: ${currentState.totalIt
         )}
       </div>
 
-      {/* Input Area */}
       <div style={{
         padding: '16px',
         borderTop: '1px solid rgba(71, 85, 105, 0.3)'

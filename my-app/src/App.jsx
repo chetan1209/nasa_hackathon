@@ -539,16 +539,37 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
     const addedHiddenArea = [];
 
     if (targetRegion) {
-        const currentScore = regionalScores[targetRegion.id].health_score;
-        const qualityMultiplier = (100 - currentScore) / 100;
-        const scoreIncrease = item.impactFactor * qualityMultiplier * 5;
-        const newScore = Math.min(100, currentScore + scoreIncrease);
-
-        setRegionalScores(prevScores => ({ ...prevScores, [targetRegion.id]: { ...prevScores[targetRegion.id], health_score: newScore } }));
-        setImpactAnalysis({ title: `Impact in ${regionalScores[targetRegion.id].name}`, airQuality: `+${scoreIncrease.toFixed(1)} pts`, propertyValue: `+${(Math.random()*5+2).toFixed(1)}%`, summary: `New Health Score: ${newScore.toFixed(1)}` });
-        setSelectedRegionId(targetRegion.id);
-        setShowAiScorePanel(true);
-    } else {
+      const oldScore = regionalScores[targetRegion.id].health_score;
+      const qualityMultiplier = (100 - oldScore) / 100;
+      const scoreIncrease = item.impactFactor * qualityMultiplier * 5;
+      const newScore = Math.min(100, oldScore + scoreIncrease);
+      
+      // Calculate ACTUAL change
+      const actualIncrease = newScore - oldScore;
+  
+      setRegionalScores(prevScores => ({ 
+          ...prevScores, 
+          [targetRegion.id]: { 
+              ...prevScores[targetRegion.id], 
+              health_score: newScore 
+          } 
+      }));
+      
+      setImpactAnalysis({ 
+          title: `Impact in ${regionalScores[targetRegion.id].name}`,
+          interventionType: item.name,
+          regionId: targetRegion.id,
+          oldScore: oldScore.toFixed(1),
+          newScore: newScore.toFixed(1),
+          scoreChange: actualIncrease.toFixed(1),
+          airQuality: `+${actualIncrease.toFixed(1)} pts`,
+          propertyValue: `+${(Math.random()*5+2).toFixed(1)}%`,
+          summary: `New Health Score: ${newScore.toFixed(1)}`
+      });
+      
+      setSelectedRegionId(targetRegion.id);
+      setShowAiScorePanel(true);
+  } else {
         setImpactAnalysis({ title: "No Impact Calculated", summary: "The item was placed outside of a designated analysis region.", airQuality: "+0.0 pts", propertyValue: "+0.0%" });
     }
     
