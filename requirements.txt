@@ -1,6 +1,6 @@
 fastapi==0.104.1
 uvicorn==0.24.0
-rioxarray==0.17.1
+rioxarray==0.15.0
 xarray==2023.11.0
 geopandas==0.14.0
 geopy==2.4.1
@@ -14,4 +14,5 @@ aiofiles==23.2.1
 pydantic==2.5.0
 pydantic-settings==2.1.0
 python-multipart==0.0.6
-yaml==0.2.5
+PyYAML==6.0.1
+scipy==1.11.4
