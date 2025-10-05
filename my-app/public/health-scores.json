@@ -1,0 +1,7 @@
+{
+  "R1": { "name": "Downtown", "health_score": 75 },
+  "R2": { "name": "West Loop", "health_score": 55 },
+  "R3": { "name": "Hyde Park", "health_score": 35 },
+  "R4": { "name": "South Side", "health_score": 4 },
+  "R5": { "name": "Lincoln Park", "health_score": 8 }
+}
