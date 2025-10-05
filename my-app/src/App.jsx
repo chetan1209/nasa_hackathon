@@ -620,10 +620,9 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
             return {
                 overall_score: score.toFixed(0),
                 categories: {
-                    sustainability: Math.min(100, score + Math.floor(Math.random()*10)).toFixed(0),
-                    livability: Math.min(100, score + Math.floor(Math.random()*5)).toFixed(0),
-                    efficiency: Math.min(100, score - Math.floor(Math.random()*5)).toFixed(0),
-                    aesthetics: Math.min(100, score + Math.floor(Math.random()*8)).toFixed(0),
+                    AQI: Math.min(100, score + Math.floor(Math.random()*10)).toFixed(0),
+                    Temperature: Math.min(100, score + Math.floor(Math.random()*5)).toFixed(0),
+                    Humidity: Math.min(100, score - Math.floor(Math.random()*5)).toFixed(0),
                 },
                 summary: score >= 70 ? 'This region boasts excellent health and sustainability!' :
                          score >= 40 ? 'Moderate health. Consider improvements for a greener future.' :
