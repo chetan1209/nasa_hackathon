@@ -1,150 +1,122 @@
-"""Setup script for UrbanX Backend."""
+#!/usr/bin/env python3
+"""
+Setup script for NASA MODIS Data Project
+========================================
 
-def create_sample_raster_files():
-    """Create sample dummy raster files for testing."""
-    import numpy as np
-    from pathlib import Path
-    import json
-    
-    # Create directories
-    raster_dir = Path("data/cities/chicago/rasters")
-    raster_dir.mkdir(parents=True, exist_ok=True)
-    
-    print("📊 Creating sample raster files for testing...")
-    
-    try:
-        # These would normally be generated from NASA data
-        # For demo purposes, we'll create placeholder metadata
-        raster_info = {
-            "ndvi.tif": {
-                "description": "Normalized Difference Vegetation Index",
-                "data_range": [0, 1],
-                "typical_values": {"downtown": 0.2, "park": 0.8, "residential": 0.4},
-                "note": "Placeholder - replace with actual NASA Landsat NDVI data"
-            },
-            "lst.tif": {
-                "description": "Land Surface Temperature", 
-                "units": "Celsius",
-                "typical_values": {"summer": 35, "winter": -5, "water": 10},
-                "note": "Placeholder - replace with actual NASA MODIS LST data"
-            },
-            "no2.tif": {
-                "description": "Nitrogen Dioxide concentration",
-                "units": "μg/m³",
-                "typical_values": {"clean": 10, "urban": 25, "industrial": 50},
-                "note": "Placeholder - replace with actual NASA Aura OMI data"
-            }
-        }
-        
-        # Write metadata file
-        with open(raster_dir / "README.json", "w") as f:
-            json.dump(raster_info, f, indent=2)
-        
-        print("✅ Sample raster metadata created")
-        print("📝 Please replace placeholder files with actual NASA data:")
-        print("   - ndvi.tif (30m resolution Landsat imagery)") 
-        print("   - lst.tif (MODIS thermal imagery)")
-        print("   - no2.tif (Aura OMI air quality data)")
-        
-    except Exception as e:
-        print(f"⚠️  Warning: Could not create sample files: {e}")
+This script helps set up the environment and check for available data.
+"""
+
+import os
+import sys
+import subprocess
+from pathlib import Path
 
 
-def validate_data_structure():
-    """Validate the city data structure."""
-    from pathlib import Path
-    
-    print("🔍 Validating data structure...")
-    
-    chicago_dir = Path("data/cities/chicago")
-    required_files = {
-        "city.yml": "City configuration",
-        "vectors/tracts.geojson": "Census tracts",
-        "vectors/clinics.geojson": "Healthcare facilities", 
-        "vectors/parks.geojson": "Park polygons"
-    }
-    
-    missing_files = []
-    for file_path, description in required_files.items():
-        full_path = chicago_dir / file_path
-        if full_path.exists():
-            print(f"✅ {file_path} ({description})")
-        else:
-            print(f"❌ {file_path} ({description}) - MISSING")
-            missing_files.append(file_path)
-    
-    # Check raster files
-    raster_dir = chicago_dir / "rasters"
-    if raster_dir.exists():
-        raster_files = list(raster_dir.glob("*.tif"))
-        if raster_files:
-            for f in raster_files:
-                print(f"✅ rasters/{f.name}")
-        else:
-            print("⚠️  No .tif raster files found in rasters/ directory")
-            missing_files.append("rasters/*.tif")
-    else:
-        missing_files.append("rasters/ directory")
-    
-    if missing_files:
-        print(f"\n⚠️  Missing critical files: {missing_files}")
-        print("💡 Please ensure these files are present before running the server")
+def check_python_version():
+    """Check if Python version is compatible."""
+    if sys.version_info < (3, 8):
+        print("Error: Python 3.8 or higher is required")
         return False
-    else:
-        print("✅ All core files validated successfully")
+    print(f"✓ Python {sys.version_info.major}.{sys.version_info.minor} detected")
+    return True
+
+
+def install_requirements():
+    """Install required packages."""
+    print("\nInstalling required packages...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+        print("✓ Requirements installed successfully")
         return True
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Error installing requirements: {e}")
+        return False
 
 
-def test_imports():
-    """Test that all required packages can be imported."""
-    print("🧪 Testing package imports...")
-    
-    packages = [
-        ("fastapi", "Web API framework"),
-        ("uvicorn", "ASGI server"),
-        ("rioxarray", "Raster data processing"),
-        ("geopandas", "Vector data handling"),
-        ("xarray", "N-dimensional arrays"),
-        ("numpy", "Numerical computing"),
-        ("pandas", "Data manipulation"),
-        ("shapely", "Geometric operations")
+def create_directories():
+    """Create necessary directories."""
+    directories = [
+        "data",
+        "data/raw",
+        "data/processed",
+        "data/output",
+        "notebooks",
+        "scripts",
+        "docs"
     ]
     
-    failed_imports = []
-    for package, description in packages:
-        try:
-            __import__(package)
-            print(f"✅ {package} ({description})")
-        except ImportError as e:
-            print(f"❌ {package} ({description}) - NOT INSTALLED")
-            failed_imports.append(package)
+    for directory in directories:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        print(f"✓ Created directory: {directory}")
+
+
+def check_data_availability():
+    """Check for existing NASA data files."""
+    print("\nChecking for existing NASA data...")
     
-    if failed_imports:
-        print(f"\n💡 Install missing packages with: pip install {' '.join(failed_imports)}")
-        return False
+    # Look for HDF files
+    hdf_files = list(Path(".").rglob("*.hdf"))
+    if hdf_files:
+        print(f"✓ Found {len(hdf_files)} HDF files:")
+        for file in hdf_files[:5]:  # Show first 5
+            print(f"  - {file}")
+        if len(hdf_files) > 5:
+            print(f"  ... and {len(hdf_files) - 5} more")
     else:
-        print("✅ All packages imported successfully")
-        return True
+        print("ℹ No HDF files found in current directory")
+    
+    # Look for other data formats
+    data_extensions = [".nc", ".tif", ".tiff", ".npy", ".json"]
+    for ext in data_extensions:
+        files = list(Path(".").rglob(f"*{ext}"))
+        if files:
+            print(f"✓ Found {len(files)} {ext} files")
+
+
+def run_data_explorer():
+    """Run the data explorer to show available options."""
+    print("\nRunning NASA Data Explorer...")
+    try:
+        subprocess.run([sys.executable, "explore_nasa_data.py", "--list-available"], check=True)
+        print("\n" + "="*50)
+        subprocess.run([sys.executable, "explore_nasa_data.py", "--data-access"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Error running data explorer: {e}")
+    except FileNotFoundError:
+        print("ℹ Data explorer script not found")
+
+
+def main():
+    """Main setup function."""
+    print("NASA MODIS Data Project Setup")
+    print("=" * 40)
+    
+    # Check Python version
+    if not check_python_version():
+        return
+    
+    # Create directories
+    print("\nCreating project directories...")
+    create_directories()
+    
+    # Install requirements
+    if not install_requirements():
+        print("Warning: Some packages may not have installed correctly")
+    
+    # Check for existing data
+    check_data_availability()
+    
+    # Run data explorer
+    run_data_explorer()
+    
+    print("\n" + "="*50)
+    print("Setup complete!")
+    print("\nNext steps:")
+    print("1. Check the NASA_DATA_OVERVIEW.md file for detailed information")
+    print("2. Run: python explore_nasa_data.py --help")
+    print("3. If you have HDF files: python explore_nasa_data.py --analyze-dir data/")
+    print("4. Visit NASA Earthdata to download data: https://search.earthdata.nasa.gov/")
 
 
 if __name__ == "__main__":
-    print("🚀 UrbanX Backend Setup")
-    print("=" * 50)
-    
-    # Test imports
-    imports_ok = test_imports()
-    
-    if imports_ok:
-        # Validate data structure
-        data_ok = validate_data_structure()
-        
-        # Create sample raster info
-        create_sample_raster_files()
-        
-        print("\n🎉 Setup Complete!")
-        print("📡 To start the server: python run_server.py")
-        print("📚 API docs will be at: http://localhost:8000/docs")
-        
-    else:
-        print("\n❌ Setup incomplete - please install missing dependencies")
-        print("🔧 Run: pip install -r requirements.txt")
+    main()
