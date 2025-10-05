@@ -41,7 +41,7 @@ const mockAIScoring = (state) => new Promise(resolve => setTimeout(() => {
 
 // --- UI Components ---
 
-const DraggablePanel = ({ children, title, initialPosition, panelRef }) => {
+const DraggablePanel = ({ children, title, initialPosition, panelRef, onClose }) => {
     const [position, setPosition] = useState(initialPosition);
     const [isDragging, setIsDragging] = useState(false);
     const offset = useRef({ x: 0, y: 0 });
@@ -84,11 +84,23 @@ const DraggablePanel = ({ children, title, initialPosition, panelRef }) => {
         <div
             ref={panelRef}
             className="panel draggable-panel"
-            style={{ left: position.x, top: position.y, cursor: isDragging ? 'grabbing' : 'grab' }}
+            style={{ left: position.x, top: position.y, cursor: isDragging ? 'grabbing' : 'grab', maxWidth: '260px',
+              maxHeight: '1000px',
+              overflow: 'auto',
+            }}
         >
             <div className="panel-handle" onMouseDown={handleMouseDown}>
-                <h3>{title}</h3>
-            </div>
+    <h3>{title}</h3>
+    {onClose && (
+        <button 
+            onClick={onClose} 
+            className="close-button" 
+            style={{position: 'absolute', top: '16px', right: '16px', zIndex: 1}}
+        >
+            &times;
+        </button>
+    )}
+</div>
             {children}
         </div>
     );
@@ -116,11 +128,11 @@ const PaletteItem = ({ item, onDragStart, onDragEnd }) => {
   const [isDragging, setIsDragging] = useState(false);
   const handleDragStart = (e) => { setIsDragging(true); e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('application/json', JSON.stringify(item)); onDragStart(item); };
   const handleDragEnd = () => { setIsDragging(false); onDragEnd(); };
-  return ( <div draggable onDragStart={handleDragStart} onDragEnd={handleDragEnd} className="palette-item" style={{ opacity: isDragging ? 0.4 : 1, transform: isDragging ? 'scale(0.95)' : 'scale(1)' }}> <span style={{ fontSize: '24px', marginRight: '16px' }}>{item.icon}</span> <div> <div style={{ fontSize: '15px', fontWeight: 600, color: THEME.textPrimary }}>{item.name}</div> <div style={{ fontSize: '12px', color: THEME.textSecondary, marginTop: '2px', textTransform: 'capitalize' }}>{item.type}</div> </div> </div> );
+  return ( <div draggable onDragStart={handleDragStart} onDragEnd={handleDragEnd} className="palette-item" style={{ opacity: isDragging ? 0.4 : 1, transform: isDragging ? 'scale(0.95)' : 'scale(1)' }}> <span style={{ fontSize: '24px', marginRight: '16px' }}>{item.icon}</span> <div> <div style={{ fontSize: '15px', color: THEME.textPrimary }}>{item.name}</div> <div style={{ fontSize: '12px', color: THEME.textSecondary, marginTop: '2px', textTransform: 'capitalize' }}>{item.type}</div> </div> </div> );
 };
 
 const Guide = ({ currentStep, setStep, refs }) => {
-    const guideBoxRef = useRef(null); const [arrowProps, setArrowProps] = useState(null); const steps = [ { title: "Welcome!", text: "This guide will walk you through the Urban Canvas AI.", target: null }, { title: "Design Palette", text: "Drag items like trees or solar panels from this panel directly onto the 3D map.", target: 'palettePanel' }, { title: "3D Viewport", text: "When you drag an item over the map, an area will be highlighted. Drop it to place it and see the impact.", target: null }, { title: "AI Urban Score", text: "As you make changes, our AI analyzes your design's impact. Watch your score change!", target: 'scorePanel' }, { title: "You're All Set!", text: "Now you're ready to start designing a greener Chicago. Enjoy!", target: null } ]; useEffect(() => { if (currentStep === null || !steps[currentStep].target) { setArrowProps(null); return; } const calculateArrow = () => { const step = steps[currentStep]; const targetRef = refs[step.target]; if (!guideBoxRef.current || !targetRef?.current) { setArrowProps(null); return; } const fromRect = guideBoxRef.current.getBoundingClientRect(); const toRect = targetRef.current.getBoundingClientRect(); const isTargetLeft = toRect.left < fromRect.left; setArrowProps({ x1: isTargetLeft ? fromRect.left : fromRect.right, y1: fromRect.top + fromRect.height / 2, x2: isTargetLeft ? toRect.right + 10 : toRect.left - 10, y2: toRect.top + toRect.height / 2 }); }; calculateArrow(); window.addEventListener('resize', calculateArrow); return () => window.removeEventListener('resize', calculateArrow); }, [currentStep, refs]); if (currentStep === null) return null; const step = steps[currentStep]; const isCentered = !step.target; const positionStyle = isCentered ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' } : (step.target === 'palettePanel' ? { top: '200px', left: '380px' } : { top: '200px', right: '400px' }); return ( <div className="guide-overlay"> {arrowProps && ( <svg style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 2999, pointerEvents: 'none' }}> <defs> <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto"> <polygon points="0 0, 10 3.5, 0 7" fill={THEME.primary} /> </marker> </defs> <line x1={arrowProps.x1} y1={arrowProps.y1} x2={arrowProps.x2} y2={arrowProps.y2} stroke={THEME.primary} strokeWidth="2" strokeDasharray="5, 5" markerEnd="url(#arrowhead)" className="guide-arrow" /> </svg> )} <div ref={guideBoxRef} className="guide-box" style={positionStyle}> <button onClick={() => setStep(null)} className="close-button">&times;</button> <h3 style={{ margin: '0 0 12px 0', color: THEME.primary, fontSize: '20px' }}>{step.title}</h3> <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: '1.6', color: THEME.textSecondary }}>{step.text}</p> <button onClick={() => { currentStep < steps.length - 1 ? setStep(currentStep + 1) : setStep(null); }} className="guide-button"> {currentStep < steps.length - 1 ? `Next` : "Finish"} </button> </div> </div> );
+    const guideBoxRef = useRef(null); const [arrowProps, setArrowProps] = useState(null); const steps = [ { title: "Welcome!", text: "This guide will walk you through the Urban Canvas AI.", target: null }, { title: "Design Palette", text: "Drag items like trees or solar panels from this panel directly onto the 3D map.", target: 'palettePanel' }, { title: "3D Viewport", text: "When you drag an item over the map, an area will be highlighted. Drop it to place it and see the impact.", target: null }, { title: "Urban Score", text: "As you make changes, our AI analyzes your design's impact. Watch your score change!", target: 'scorePanel' }, { title: "You're All Set!", text: "Now you're ready to start designing a greener Chicago. Enjoy!", target: null } ]; useEffect(() => { if (currentStep === null || !steps[currentStep].target) { setArrowProps(null); return; } const calculateArrow = () => { const step = steps[currentStep]; const targetRef = refs[step.target]; if (!guideBoxRef.current || !targetRef?.current) { setArrowProps(null); return; } const fromRect = guideBoxRef.current.getBoundingClientRect(); const toRect = targetRef.current.getBoundingClientRect(); const isTargetLeft = toRect.left < fromRect.left; setArrowProps({ x1: isTargetLeft ? fromRect.left : fromRect.right, y1: fromRect.top + fromRect.height / 2, x2: isTargetLeft ? toRect.right + 10 : toRect.left - 10, y2: toRect.top + toRect.height / 2 }); }; calculateArrow(); window.addEventListener('resize', calculateArrow); return () => window.removeEventListener('resize', calculateArrow); }, [currentStep, refs]); if (currentStep === null) return null; const step = steps[currentStep]; const isCentered = !step.target; const positionStyle = isCentered ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' } : (step.target === 'palettePanel' ? { top: '200px', left: '380px' } : { top: '200px', right: '400px' }); return ( <div className="guide-overlay"> {arrowProps && ( <svg style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 2999, pointerEvents: 'none' }}> <defs> <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto"> <polygon points="0 0, 10 3.5, 0 7" fill={THEME.primary} /> </marker> </defs> <line x1={arrowProps.x1} y1={arrowProps.y1} x2={arrowProps.x2} y2={arrowProps.y2} stroke={THEME.primary} strokeWidth="2" strokeDasharray="5, 5" markerEnd="url(#arrowhead)" className="guide-arrow" /> </svg> )} <div ref={guideBoxRef} className="guide-box" style={positionStyle}> <button onClick={() => setStep(null)} className="close-button">&times;</button> <h3 style={{ margin: '0 0 12px 0', color: THEME.primary, fontSize: '20px' }}>{step.title}</h3> <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: '1.6', color: THEME.textSecondary }}>{step.text}</p> <button onClick={() => { currentStep < steps.length - 1 ? setStep(currentStep + 1) : setStep(null); }} className="guide-button"> {currentStep < steps.length - 1 ? `Next` : "Finish"} </button> </div> </div> );
 };
 
 // Add this helper function before ChicagoUrbanPlanner component
@@ -658,28 +670,76 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
                 </DraggablePanel>
                 
                 {showAiScorePanel && currentAiScoreDisplay && (
-                    <DraggablePanel title={`AI Urban Score: ${currentAiScoreDisplay.regionName || 'Overall'}`} initialPosition={{ x: window.innerWidth - 360, y: 80 }} panelRef={scorePanelRef}>
-                        <div className="score-card">
-                            <div key={scoreKey} className="score-value pulse-glow" style={{ color: getColorStringForScore(currentAiScoreDisplay.overall_score) }}>
-                                {currentAiScoreDisplay.overall_score}
-                            </div>
-                            <div className="score-label">Health Score</div>
+    <DraggablePanel 
+        title={`What Ifs: ${currentAiScoreDisplay.regionName || 'Overall'}`} 
+        initialPosition={{ x: window.innerWidth - 300, y: 80 }} 
+        panelRef={scorePanelRef}
+        onClose={() => setShowAiScorePanel(false)}
+    >
+        <div className="score-card" style={{padding: '16px', marginBottom: '12px'}}>
+            <div key={scoreKey} className="score-value pulse-glow" style={{ 
+                color: getColorStringForScore(currentAiScoreDisplay.overall_score),
+                fontSize: '42px'
+            }}>
+                {currentAiScoreDisplay.overall_score}
+            </div>
+            <div className="score-label">Health Score</div>
+        </div>
+        
+        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+            {Object.entries(currentAiScoreDisplay.categories).map(([key, value]) => (
+                <div key={key} className="category-card" style={{
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '10px 14px'
+                }}>
+                    <div className="category-label" style={{
+                        fontSize: '13px',
+                        textAlign: 'left',
+                        textTransform: 'capitalize'
+                    }}>{key}</div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                        <span style={{fontSize: '16px', color: THEME.primary}}>
+                            {Math.random() > 0.5 ? '↑' : '↓'}
+                        </span>
+                        <div className="category-value" style={{fontSize: '22px'}}>{value}</div>
+                    </div>
+                </div>
+            ))}
+            
+            {/* Overall Change - Highlighted */}
+            {impactAnalysis && (
+                <div style={{
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '12px 14px',
+                    background: 'rgba(74, 222, 128, 0.2)',
+                    border: '1px solid ' + THEME.primary,
+                    borderRadius: '8px',
+                    marginTop: '4px'
+                }}>
+                    <div style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        textAlign: 'left',
+                        color: THEME.primary
+                    }}>Overall Change</div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                        <span style={{fontSize: '18px', color: THEME.primary}}>
+                            {impactAnalysis.airQuality.startsWith('+') ? '↑' : '↓'}
+                        </span>
+                        <div style={{fontSize: '22px', fontWeight: '700', color: THEME.primary}}>
+                            {impactAnalysis.airQuality}
                         </div>
-                        <div className="categories-grid">
-                            {Object.entries(currentAiScoreDisplay.categories).map(([key, value]) => (
-                                <div key={key} className="category-card">
-                                    <div className="category-value">{value}</div>
-                                    <div className="category-label">{key}</div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="summary-card">{currentAiScoreDisplay.summary}</div>
-                    </DraggablePanel>
-                )}
+                    </div>
+                </div>
+            )}
+        </div>
+    </DraggablePanel>
+)}
 
-                {impactAnalysis && (<div className="panel slide-in-up impact-panel">
-                    <div className="panel-header"><h3>{impactAnalysis.title}</h3><button onClick={() => setImpactAnalysis(null)} className="close-button">&times;</button></div> <p>{impactAnalysis.summary}</p> <div className="impact-metrics"> <div className="metric-card"> <div className="metric-value">{impactAnalysis.airQuality}</div> <div className="metric-label">Health Score Change</div> </div> <div className="metric-card"> <div className="metric-value">{impactAnalysis.propertyValue}</div> <div className="metric-label">Property Value</div> </div> </div>
-                </div>)}
             </div>
             
             <SimpleAIExplain 
@@ -763,7 +823,7 @@ const App = () => {
                 .metric-label { font-size: 12px; color: var(--text-secondary); }
                 
                 .guide-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 3000; backdrop-filter: blur(5px); }
-                .guide-box { position: absolute; background: var(--panel-bg); backdrop-filter: blur(12px); box-shadow: ${THEME.shadow}; padding: 24px; border-radius: 12px; border: 1px solid var(--panel-border); width: 320px; color: white; animation: fadeIn 0.5s ease; z-index: 3001; }
+                .guide-box { position: absolute; background: var(--panel-bg); backdrop-filter: blur(12px); box-shadow: ${THEME.shadow}; padding: 24px; border-radius: 12px; border: 1px solid var(--panel-border); width: 280px; color: white; animation: fadeIn 0.5s ease; z-index: 3001; }
                 .guide-button { padding: 10px 20px; background: var(--primary); border: none; border-radius: 8px; color: var(--background); font-weight: 600; cursor: pointer; transition: transform 0.2s; }
                 .guide-button:hover { transform: scale(1.05); }
                 .guide-arrow { animation: dash 2s linear infinite; }
