@@ -33,3 +33,7 @@ ipywidgets>=7.6.0
 # Optional: For advanced geospatial analysis
 geopandas>=0.9.0
 folium>=0.12.0
+
+# Backend API server
+flask>=2.0.0
+flask-cors>=3.0.0
