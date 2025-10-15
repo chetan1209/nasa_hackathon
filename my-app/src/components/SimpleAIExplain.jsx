@@ -54,7 +54,7 @@ const ChatInput = ({ onSend, loading }) => {
   );
 };
 
-const SimpleAIExplain = ({ cityState, impactAnalysis, onClose, visible }) => {
+const SimpleAIExplain = ({ cityState, impactAnalysis, regionalScores, cumulativeChangeByRegion, onClose, visible }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -90,10 +90,6 @@ const SimpleAIExplain = ({ cityState, impactAnalysis, onClose, visible }) => {
     
     try {
       const currentState = analyzeCurrentState();
-      
-      if (userMessage) {
-        setMessages(prev => [...prev, { type: 'user', content: userMessage, timestamp: new Date() }]);
-      }
       
       const conversationHistory = messages.map(msg => ({
         role: msg.type === 'user' ? 'user' : 'assistant',
@@ -182,12 +178,58 @@ FORMAT:
 
   React.useEffect(() => {
     if (visible && messages.length === 0) {
-      getAIExplanation();
+      // Show a centered welcome message immediately
+      setMessages([{ type: 'ai', content: 'Welcome! Ask about a region, e.g., "region 1" to view exact Health, AQI, Temperature, and Humidity. You can also ask for recommendations.', timestamp: new Date() }]);
     }
   }, [visible]);
 
+  const tryHandleRegionQuery = (text) => {
+    if (!regionalScores) return false;
+    const match = text.trim().toLowerCase().match(/^region\s*(\d+)$/);
+    if (!match) return false;
+    const num = match[1];
+    const id = `R${num}`;
+    const r = regionalScores[id];
+    if (!r) {
+      setMessages(prev => [...prev, { type: 'ai', content: `Region ${num} not found.`, timestamp: new Date() }]);
+      return true;
+    }
+    const health = Math.round(r.health_score);
+    const aqi = Math.round(r.raw_aqi);
+    const temp = Math.round(r.raw_temperature);
+    const hum = Math.round(r.raw_humidity);
+
+    // Determine worst factor and suggestion
+    const badAQI = aqi; // higher is worse
+    const badTemp = temp; // higher is worse
+    const badHum = Math.max(0, 100 - hum); // lower humidity is worse
+    let focus = 'AQI';
+    let suggestion = 'Plant more greenspaces to capture particulates and improve AQI.';
+    let worstVal = badAQI;
+    if (badTemp > worstVal) {
+      focus = 'Temperature';
+      suggestion = 'Add reflective surfaces (cool roofs) to reduce heat.';
+      worstVal = badTemp;
+    }
+    if (badHum > worstVal) {
+      focus = 'Humidity';
+      suggestion = 'Introduce water bodies/greens to boost evapotranspiration.';
+      worstVal = badHum;
+    }
+    const cum = Number(((cumulativeChangeByRegion && cumulativeChangeByRegion[id]) || 0).toFixed(1));
+    const cumStr = cum !== 0 ? ` (total change: ${cum > 0 ? '+' : ''}${cum})` : '';
+    const reply = `Region ${num}: Health Score ${health}${cumStr} • AQI ${aqi} • Temperature ${temp} • Humidity ${hum}%\nTo improve overall score, we can focus on ${focus}. ${suggestion}`;
+    setMessages(prev => [...prev, { type: 'ai', content: reply, timestamp: new Date() }]);
+    return true;
+  };
+
   const handleSendMessage = (message) => {
     if (message.trim()) {
+      // echo user
+      setMessages(prev => [...prev, { type: 'user', content: message.trim(), timestamp: new Date() }]);
+      // local intent handling
+      if (tryHandleRegionQuery(message)) return;
+      // fallback to AI
       getAIExplanation(message);
     }
   };
@@ -197,10 +239,11 @@ FORMAT:
   return (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      width: '380px',
-      height: '500px',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '520px',
+      height: '600px',
       background: 'rgba(15, 23, 42, 0.95)',
       backdropFilter: 'blur(10px)',
       borderRadius: '16px',
@@ -219,11 +262,8 @@ FORMAT:
       }}>
         <div>
           <h3 style={{ margin: '0 0 4px 0', color: '#60a5fa', fontSize: '16px', fontWeight: '700' }}>
-            Urban AI Assistant
+            Cherki
           </h3>
-          <p style={{ margin: 0, color: '#94a3b8', fontSize: '12px' }}>
-            Powered by GPT-4o & NASA data
-          </p>
         </div>
         <button
           onClick={onClose}

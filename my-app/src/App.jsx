@@ -482,6 +482,7 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
   const cesiumContainerRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [cityState, setCityState] = useState({});
+  const [showPanels, setShowPanels] = useState(false);
 
   // --- EDITED: History now stores more info for precise undo ---
   const [history, setHistory] = useState([]);
@@ -500,6 +501,7 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
 
   // --- NEW: State for temporary user feedback messages ---
   const [impactAnalysis, setImpactAnalysis] = useState(null);
+  const [cumulativeChangeByRegion, setCumulativeChangeByRegion] = useState({});
 
   const [hiddenAreas, setHiddenAreas] = useState([]);
   const palettePanelRef = useRef(null);
@@ -616,6 +618,9 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
           console.error("Failed to load data:", error);
         } finally {
           setIsLoading(false);
+          setTimeout(() => {
+            setShowPanels(true);
+          }, 3500);
         }
       })();
 
@@ -631,7 +636,43 @@ const ChicagoUrbanPlanner = ({ onStartGuide }) => {
       }
     };
   }, []);
+  
+  // --- Highlight Selected Region Boundary ---
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !regionGeoJson || !selectedRegionId) return;
 
+    // Find the selected region's feature
+    const selectedFeature = regionGeoJson.features.find(
+      f => f.properties.id === selectedRegionId
+    );
+    if (!selectedFeature) return;
+
+    const coordinates = selectedFeature.geometry.coordinates[0];
+    const positions = coordinates.map(coord => 
+      Cesium.Cartesian3.fromDegrees(coord[0], coord[1], 100)
+    );
+
+    const boundaryEntity = viewer.entities.add({
+      name: `Boundary_${selectedRegionId}`,
+      polyline: {
+        positions: positions,
+        width: 5,
+        material: new Cesium.PolylineOutlineMaterialProperty({
+          color: Cesium.Color.fromCssColorString(THEME.primary).withAlpha(0.9),
+          outlineWidth: 2,
+          outlineColor: Cesium.Color.BLACK.withAlpha(0.7),
+        }),
+        clampToGround: false,
+      },
+    });
+
+    return () => {
+      if (viewer && !viewer.isDestroyed() && viewer.entities.contains(boundaryEntity)) {
+        viewer.entities.remove(boundaryEntity);
+      }
+    };
+  }, [regionGeoJson, selectedRegionId]);
   // --- Dynamic Building Styling Effect (Unchanged) ---
   useEffect(() => {
     const tileset = osmBuildingsTilesetRef.current;
@@ -946,6 +987,11 @@ const handleDrop = useCallback(
       const scoreIncrease = item.impactFactor * qualityMultiplier * 5;
       const newScore = Math.min(100, oldScore + scoreIncrease);
       const actualIncrease = newScore - oldScore;
+      // Track cumulative delta per region
+      setCumulativeChangeByRegion(prev => ({
+        ...prev,
+        [targetRegion.id]: (prev[targetRegion.id] || 0) + actualIncrease
+      }));
 
       // --- SIMULATE DYNAMIC CHANGES TO RAW VALUES ---
       const newRawAqi = Math.max(0, oldRegionData.raw_aqi - (item.impactFactor * 1.5));
@@ -971,7 +1017,7 @@ const handleDrop = useCallback(
         oldScore: oldScore.toFixed(1),
         newScore: newScore.toFixed(1),
         scoreChange: actualIncrease.toFixed(1),
-        airQuality: `+${actualIncrease.toFixed(1)} pts`,
+        airQuality: `${actualIncrease >= 0 ? '+' : ''}${actualIncrease.toFixed(1)} pts (total ${( (cumulativeChangeByRegion[targetRegion.id]||0) + actualIncrease ).toFixed(1)})`,
         propertyValue: `+${(Math.random() * 5 + 2).toFixed(1)}%`,
         summary: `New Health Score: ${newScore.toFixed(1)}`,
       });
@@ -1188,6 +1234,7 @@ const handleDrop = useCallback(
           onDragLeave={handleDragLeave}
           className="cesium-container"
         />
+        {showPanels && (
         <button
           onClick={() => setShowAIExplain(true)}
           onMouseEnter={() => setIsHovered(true)}
@@ -1261,7 +1308,7 @@ const handleDrop = useCallback(
                 fontSize: "14px",
               }}
             >
-              AI Explain
+              Chergi AI
             </span>
 
             {/* Animated shine effect */}
@@ -1278,8 +1325,9 @@ const handleDrop = useCallback(
             />
           </div>
         </button>
+        )}
 
-        <Legend />
+        {showPanels &&<Legend />}
 
         {isLoading && (
           <div className="loading-overlay">
@@ -1287,7 +1335,7 @@ const handleDrop = useCallback(
             <div className="spinner" /> <h1>Loading Chicago...</h1>{" "}
           </div>
         )}
-
+        {showPanels && (
         <DraggablePanel
           title="Design Palette"
           initialPosition={{ x: 20, y: 20 }}
@@ -1323,6 +1371,7 @@ const handleDrop = useCallback(
             </button>
           </div>
         </DraggablePanel>
+        )}
 
         {showAiScorePanel && currentAiScoreDisplay && (
           <DraggablePanel
@@ -1460,8 +1509,9 @@ const handleDrop = useCallback(
 
       <SimpleAIExplain
         cityState={cityState}
-        aiScore={aiScore}
         impactAnalysis={impactAnalysis}
+        regionalScores={regionalScores}
+        cumulativeChangeByRegion={cumulativeChangeByRegion}
         visible={showAIExplain}
         onClose={() => setShowAIExplain(false)}
       />
@@ -1633,11 +1683,10 @@ const LandingPage = ({ onStart }) => {
       <div ref={mountRef} className="landing-background" />
       <div className="landing-content">
         <h1 className="landing-title">
-          UrbanX Canvas <sup>AI</sup>
+          Chergi <sup>AI</sup>
         </h1>
         <p className="landing-subtitle">
-          Reimagine Chicago's future. Utilize generative AI to design a
-          sustainable and vibrant urban landscape. Your vision, powered by data.
+          Reimagining Chicago's future. 
         </p>
         <button onClick={onStart} className="landing-button">
           Start Designing <span>&rarr;</span>
@@ -1669,7 +1718,7 @@ const App = () => {
                 .landing-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
                 .landing-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
                 .landing-content { text-align: center; z-index: 2; animation: fadeIn 2s ease-out; }
-                .landing-title { font-size: 4.5rem; font-weight: 800; margin: 0 0 1rem 0; letter-spacing: -2px; }
+                .landing-title { font-size: 5.5rem; font-weight: 800; margin: 0 0 1rem 0; letter-spacing: -2px; }
                 .landing-title sup { font-size: 1.5rem; color: var(--primary); }
                 .landing-subtitle { font-size: 1.2rem; max-width: 600px; margin: 0 auto 2.5rem auto; color: var(--text-secondary); line-height: 1.7; }
                 .landing-button { padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: bold; color: var(--background); background: var(--primary); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 20px rgba(74, 222, 128, 0.4); transition: all 0.3s ease; }
@@ -1685,7 +1734,25 @@ const App = () => {
                 .spinner { width: 50px; height: 50px; border: 4px solid var(--panel-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
                 
                 .panel { position: absolute; background: var(--panel-bg); backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid var(--panel-border); color: var(--text-primary); box-shadow: ${THEME.shadow}; z-index: 100; padding: 0 20px 20px 20px; max-height: calc(100vh - 40px); overflow-y: hidden; width: 320px; display: flex; flex-direction: column; }
-                .panel.draggable-panel { animation: fadeIn 0.5s ease-out; }
+                .panel.draggable-panel { animation: slideInFromLeft 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+                .panel.draggable-panel .palette-item { animation: fadeInStagger 0.6s ease-out backwards; }
+                .panel.draggable-panel .palette-item:nth-child(1) { animation-delay: 0.2s; }
+                .panel.draggable-panel .palette-item:nth-child(2) { animation-delay: 0.3s; }
+                .panel.draggable-panel .palette-item:nth-child(3) { animation-delay: 0.4s; }
+                .panel.draggable-panel .panel-actions { animation: fadeInStagger 0.6s ease-out 0.5s backwards; }
+                .legend-panel { 
+  position: absolute; 
+  bottom: 20px; 
+  right: 20px; 
+  background: var(--panel-bg); 
+  backdrop-filter: blur(12px); 
+  border-radius: 12px; 
+  border: 1px solid var(--panel-border); 
+  padding: 12px 16px; 
+  z-index: 100; 
+  box-shadow: ${THEME.shadow}; 
+  animation: slideInRight 0.7s ease-out; 
+}
                 .panel-handle { cursor: grab; padding: 16px 0; }
                 .panel-handle:active { cursor: grabbing; }
                 .panel-handle h3 { margin: 0; color: var(--primary); font-size: 20px; font-weight: 700; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; }
@@ -1700,7 +1767,7 @@ const App = () => {
                 .action-button.primary:hover:not(:disabled) { filter: brightness(1.2); }
                 .action-button.secondary { background: transparent; border: 1px solid var(--primary); color: var(--primary); margin-top: 8px; }
                 .action-button.secondary:hover { background: var(--primary); color: var(--background); }
-                
+                button[style*="top: 20px"][style*="right: 20px"] { animation: slideInRight 0.7s ease-out; }
                 .score-card { background: rgba(74, 222, 128, 0.1); padding: 20px; border-radius: 12px; margin-bottom: 16px; text-align: center; }
                 .score-value { font-size: 52px; font-weight: 700; }
                 .score-label { font-size: 14px; color: var(--text-secondary); }
@@ -1743,6 +1810,26 @@ const App = () => {
                 @keyframes spin { to { transform: rotate(360deg); } }
                 @keyframes pulse-glow { 0%, 100% { transform: scale(1); text-shadow: 0 0 5px transparent; } 50% { transform: scale(1.05); text-shadow: 0 0 20px var(--primary); } }
                 @keyframes dash { to { stroke-dashoffset: -20; } }
+                @keyframes slideInFromLeft { 
+    from { 
+        opacity: 0; 
+        transform: translateX(-100px) scale(0.95); 
+    } 
+    to { 
+        opacity: 1; 
+        transform: translateX(0) scale(1); 
+    } 
+}
+@keyframes fadeInStagger { 
+    from { 
+        opacity: 0; 
+        transform: translateX(-20px); 
+    } 
+    to { 
+        opacity: 1; 
+        transform: translateX(0); 
+    } 
+}
             `}</style>
 
       {view === "landing" ? (
